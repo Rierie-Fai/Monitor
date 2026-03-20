@@ -1,10 +1,10 @@
-const CACHE_NAME = 'setoran-app-v1.1.1';
+const CACHE_NAME = 'setoran-app-v1.1.2';
 const urlsToCache = [
-  './',
-  './index.html',
-  './style.css',
-  './script.js',
-  './manifest.json'
+  '/Monitor/',
+  '/Monitor/index.html',
+  '/Monitor/style.css',
+  '/Monitor/script.js',
+  '/Monitor/manifest.json'
 ];
 
 // Install Service Worker dan simpan file ke cache
