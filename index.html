@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pantau Setoran Pro</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <header style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1 style="margin: 0; color: #1e293b; font-size: 1.5rem;">Pantau Setoran</h1>
+            <button class="btn btn-primary" style="width: auto; margin: 0; padding: 8px 15px;" onclick="bukaModalSetup()">+ Pinjaman</button>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-outline" style="margin: 0; padding: 8px; flex: 1; font-size: 0.85rem;" onclick="backupData()">📥 Backup Data</button>
+            <label class="btn btn-outline" style="margin: 0; padding: 8px; flex: 1; font-size: 0.85rem; text-align: center; cursor: pointer;">
+                📤 Restore Data
+                <input type="file" id="restore-file" accept=".json" style="display: none;" onchange="restoreData(event)">
+            </label>
+        </div>
+    </header>
+
+    <div id="modal-setup" class="overlay">
+        <div class="card modal">
+            <h2 id="setup-title">Pinjaman Baru</h2>
+            <input type="hidden" id="edit-loan-index">
+            
+            <label>Nama Pinjaman</label>
+            <input type="text" id="input-nama" placeholder="Contoh: Cicilan Motor">
+            
+            <label>Total Pinjaman (Rp)</label>
+            <input type="number" id="input-total" placeholder="Contoh: 15000000">
+            
+            <label>Nominal Setoran (Rp)</label>
+            <input type="number" id="input-setoran" placeholder="Contoh: 750000">
+            
+            <label>Jangka Waktu (Berapa kali bayar)</label>
+            <input type="number" id="input-durasi" placeholder="Contoh: 12">
+            
+            <label>Jatuh Tempo (Tanggal tiap bulan)</label>
+            <input type="number" id="input-tgl" min="1" max="31" placeholder="1 - 31">
+            
+            <div class="flex-row">
+                <button class="btn btn-outline" onclick="toggleModal('modal-setup')">Batal</button>
+                <button class="btn btn-primary" onclick="simpanPinjaman()">Simpan Data</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-bayar" class="overlay">
+        <div class="card modal">
+            <h2 id="bayar-title">Konfirmasi Bayar</h2>
+            <input type="hidden" id="edit-history-index">
+            <p id="bayar-untuk-nama" style="font-weight: bold; color: var(--primary); margin-bottom: 15px;"></p>
+            
+            <label>Tanggal Bayar</label>
+            <input type="date" id="bayar-tgl">
+            
+            <label>Nominal Bayar (Rp)</label>
+            <input type="number" id="bayar-nominal">
+            
+            <div class="flex-row">
+                <button class="btn btn-outline" onclick="toggleModal('modal-bayar')">Batal</button>
+                <button class="btn btn-success" onclick="prosesSimpanBayar()">Simpan Pembayaran</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loan-list"></div>
+</div>
+
+<script src="script.js"></script>
+<script>
+    // Registrasi Service Worker untuk fungsionalitas PWA Offline
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('PWA: Service Worker terdaftar!'))
+                .catch(err => console.error('PWA: Gagal daftar Service Worker', err));
+        });
+    }
+</script>
+</body>
+</html>
