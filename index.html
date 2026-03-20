@@ -8,7 +8,6 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#3b82f6">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -16,20 +15,18 @@
 </head>
 <body>
 
+<div id="sync-indicator" class="sync-banner">☁️ Sinkronisasi Awan...</div>
+
 <div class="container">
     <header>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h1 style="margin: 0; font-size: 1.4rem; color: #1e293b;">☰ Catatan Setoran Bulanan</h1>
-            <div id="sync-indicator" style="font-size: 0.7rem; color: #10b981; font-weight: bold; display: none;">SINKRON...</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h1 style="margin: 0; font-size: 1.4rem; color: #1e293b;">☰ Pantau Pro</h1>
+            <button id="btn-notif" class="btn-notif-circle" onclick="mintaIzinNotifikasi()" title="Aktifkan Notifikasi">🔔</button>
         </div>
         
         <div class="action-bar">
-            <button class="btn btn-primary flex-btn" onclick="bukaModalSetup()">
-                + Pinjaman
-            </button>
-            <button class="btn btn-cloud flex-btn" onclick="toggleModal('modal-cloud')">
-                ☁️ Cloud Sync
-            </button>
+            <button class="btn btn-primary flex-btn" onclick="bukaModalSetup()">+ Pinjaman</button>
+            <button class="btn btn-cloud flex-btn" onclick="toggleModal('modal-cloud')">☁️ Cloud Sync</button>
         </div>
 
         <div class="search-container">
@@ -52,7 +49,7 @@
             <input type="number" id="input-setoran">
             <div class="grid-2">
                 <div><label>Tenor (Kali)</label><input type="number" id="input-durasi"></div>
-                <div><label>Tgl Tempo</label><input type="number" id="input-tgl" min="1" max="31"></div>
+                <div><label>Tgl Tempo (1-31)</label><input type="number" id="input-tgl" min="1" max="31"></div>
             </div>
             <div class="grid-2">
                 <button class="btn btn-outline" onclick="toggleModal('modal-setup')">Batal</button>
@@ -63,7 +60,7 @@
 
     <div id="modal-bayar" class="overlay">
         <div class="card modal">
-            <h2 style="margin-top:0">Bayar Cicilan</h2>
+            <h2 style="margin-top:0">Catat Pembayaran</h2>
             <p id="bayar-untuk-nama" class="badge-info"></p>
             <input type="hidden" id="edit-history-index">
             <label>Tanggal Bayar</label>
@@ -79,15 +76,15 @@
 
     <div id="modal-cloud" class="overlay">
         <div class="card modal">
-            <h2 style="margin-top:0">Awan & Backup</h2>
-            <p style="font-size: 0.8rem; color: #64748b;">Gunakan Cloud untuk sinkron antar perangkat, atau File untuk cadangan manual.</p>
+            <h2 style="margin-top:0">Cloud & Backup</h2>
+            <p style="font-size:0.8rem; color:var(--muted); margin-bottom:15px">Sistem melakukan Auto-Sync setiap ada perubahan.</p>
             
-            <button class="btn btn-cloud w-100 mb-10" onclick="uploadKeSupabase()" id="btn-upload">⬆️ Upload ke Supabase</button>
-            <button class="btn btn-outline w-100 mb-20" onclick="downloadDariSupabase()" id="btn-download">⬇️ Download (Gabung Data)</button>
+            <button class="btn btn-primary w-100 mb-10" onclick="manualUpload()" id="btn-upload">⬆️ Paksa Upload ke Awan</button>
+            <button class="btn btn-outline w-100 mb-20" onclick="manualDownload()" id="btn-download">⬇️ Paksa Ambil dari Awan</button>
             
             <div style="border-top: 1px solid #e2e8f0; padding-top: 15px;">
-                <button class="btn-edit-sm w-100 mb-10" style="padding:10px" onclick="backupData()">📥 Backup ke File JSON</button>
-                <label class="btn-edit-sm w-100" style="display:block; text-align:center; padding:10px; cursor:pointer">
+                <button class="btn-edit-sm w-100 mb-10" onclick="backupData()">📥 Backup ke File JSON</button>
+                <label class="btn-edit-sm w-100" style="display:block; text-align:center; cursor:pointer">
                     📤 Restore dari File
                     <input type="file" accept=".json" style="display:none" onchange="restoreData(event)">
                 </label>
