@@ -4,7 +4,9 @@ const urlsToCache = [
   '/Monitor/index.html',
   '/Monitor/style.css',
   '/Monitor/script.js',
-  '/Monitor/manifest.json'
+  '/Monitor/manifest.json', 
+  '/Monitor/icon-192.png', 
+  '/Monitor/icon-512.png'
 ];
 
 // Install Service Worker dan simpan file ke cache
