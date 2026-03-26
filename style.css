@@ -48,7 +48,7 @@ header { position: sticky; top: 0; background: white; z-index: 50; padding-botto
 .mt-20 { margin-top: 20px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 
-input { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; box-sizing: border-box; margin-bottom: 10px; }
+input, select { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; box-sizing: border-box; margin-bottom: 10px; }
 label { font-size: 0.75rem; font-weight: 600; color: var(--muted); display: block; margin-bottom: 4px; }
 
 .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
@@ -72,3 +72,46 @@ label { font-size: 0.75rem; font-weight: 600; color: var(--muted); display: bloc
 .badge-info { background: #eff6ff; padding: 10px; border-radius: 10px; text-align: center; color: var(--primary); font-weight: bold; font-size: 0.9rem; margin-bottom: 15px; }
 .btn-edit-sm { background: #f1f5f9; border: none; padding: 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; color: var(--muted); cursor: pointer; }
 .btn-danger-sm { color: var(--danger); background: none; border: none; font-size: 1.1rem; cursor: pointer; }
+
+/* Style tambahan untuk Accordion Tahun */
+.year-group-header {
+    background: #e2e8f0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    margin: 12px 0 4px 0;
+    color: #475569;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.year-group-header:hover { background: #cbd5e1; }
+
+.year-group-header::after {
+    content: '▼';
+    font-size: 0.6rem;
+    transition: transform 0.3s;
+}
+
+.year-group-header.active::after {
+    transform: rotate(-180deg);
+}
+
+.year-content {
+    display: none;
+    padding: 0 5px;
+}
+
+.year-content.active {
+    display: block;
+}
+
+.year-summary {
+    font-size: 0.7rem;
+    color: var(--primary);
+    font-weight: 600;
+}
