@@ -24,19 +24,22 @@ function standarisasiData(l) {
 }
 
 // --- LOGIKA TANGGAL & NOTIFIKASI ---
-
 function cekSudahBayarBulanIni(loan) {
     const sekarang = new Date();
+    const blnSekarang = sekarang.getMonth() + 1;
+    const thnSekarang = sekarang.getFullYear();
+    
     return loan.riwayat.some(h => {
-        const tgl = new Date(h.tgl);
-        return tgl.getMonth() === sekarang.getMonth() && tgl.getFullYear() === sekarang.getFullYear();
+        // Cek target bulan & tahun dari input, fallback ke tgl bayar jika data lama
+        const b = h.bulan || (new Date(h.tgl).getMonth() + 1);
+        const t = h.tahun || new Date(h.tgl).getFullYear();
+        return b === blnSekarang && t === thnSekarang;
     });
 }
 
 function dapatkanTanggalTempoLengkap(tglInput) {
     const sekarang = new Date();
     let tglTempo = new Date(sekarang.getFullYear(), sekarang.getMonth(), tglInput);
-    // Jika tanggal sudah lewat di bulan ini, arahkan ke bulan depan
     if (tglTempo < sekarang && sekarang.getDate() > tglInput) {
         tglTempo = new Date(sekarang.getFullYear(), sekarang.getMonth() + 1, tglInput);
     }
@@ -85,7 +88,6 @@ function cekJatuhTempoDanNotif() {
 }
 
 // --- SINKRONISASI OTOMATIS (CLOUD) ---
-
 async function saveAndRender() {
     localStorage.setItem(MASTER_KEY, JSON.stringify(loans));
     render();
@@ -133,7 +135,6 @@ function mergeData(newData) {
         const item = standarisasiData(newItem);
         const idx = loans.findIndex(l => l.id === item.id);
         if (idx > -1) {
-            // Update jika data cloud lebih baru/berbeda
             loans[idx] = item; 
         } else {
             loans.push(item);
@@ -144,7 +145,6 @@ function mergeData(newData) {
 }
 
 // --- GLOBAL ACTIONS ---
-
 window.toggleModal = (id) => {
     const el = document.getElementById(id);
     if(el) el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
@@ -188,17 +188,24 @@ window.simpanPinjaman = () => {
     toggleModal('modal-setup');
 };
 
+// --- LOGIKA PEMBAYARAN BARU ---
 window.bukaModalBayar = (lIdx, hIdx = null) => {
     activeLoanIndex = lIdx;
     const l = loans[lIdx];
     document.getElementById('bayar-untuk-nama').innerText = l.nama;
     document.getElementById('edit-history-index').value = hIdx !== null ? hIdx : "";
+    
     if (hIdx !== null) {
         document.getElementById('bayar-tgl').value = l.riwayat[hIdx].tgl;
         document.getElementById('bayar-nominal').value = l.riwayat[hIdx].nominal;
+        document.getElementById('bayar-bulan').value = l.riwayat[hIdx].bulan || new Date(l.riwayat[hIdx].tgl).getMonth() + 1;
+        document.getElementById('bayar-tahun').value = l.riwayat[hIdx].tahun || new Date(l.riwayat[hIdx].tgl).getFullYear();
     } else {
-        document.getElementById('bayar-tgl').valueAsDate = new Date();
+        const now = new Date();
+        document.getElementById('bayar-tgl').valueAsDate = now;
         document.getElementById('bayar-nominal').value = l.setoran;
+        document.getElementById('bayar-bulan').value = now.getMonth() + 1;
+        document.getElementById('bayar-tahun').value = now.getFullYear();
     }
     toggleModal('modal-bayar');
 };
@@ -207,15 +214,38 @@ window.prosesSimpanBayar = () => {
     const hIdx = document.getElementById('edit-history-index').value;
     const tgl = document.getElementById('bayar-tgl').value;
     const nominal = parseInt(document.getElementById('bayar-nominal').value);
-    if(!tgl || !nominal) return;
-    if (hIdx !== "") loans[activeLoanIndex].riwayat[hIdx] = { tgl, nominal };
-    else loans[activeLoanIndex].riwayat.push({ tgl, nominal });
+    const bulan = parseInt(document.getElementById('bayar-bulan').value);
+    const tahun = parseInt(document.getElementById('bayar-tahun').value);
+    
+    if(!tgl || !nominal || !bulan || !tahun) return;
+    
+    const dataBayar = { tgl, nominal, bulan, tahun };
+
+    if (hIdx !== "") {
+        loans[activeLoanIndex].riwayat[hIdx] = dataBayar;
+    } else {
+        loans[activeLoanIndex].riwayat.push(dataBayar);
+    }
+
+    // Auto Sorting: Tahun terbaru -> Bulan terbaru -> Tanggal terbaru
+    loans[activeLoanIndex].riwayat.sort((a, b) => {
+        const tahunA = a.tahun || new Date(a.tgl).getFullYear();
+        const tahunB = b.tahun || new Date(b.tgl).getFullYear();
+        if (tahunB !== tahunA) return tahunB - tahunA;
+        
+        const bulanA = a.bulan || new Date(a.tgl).getMonth() + 1;
+        const bulanB = b.bulan || new Date(b.tgl).getMonth() + 1;
+        if (bulanB !== bulanA) return bulanB - bulanA;
+        
+        return new Date(b.tgl) - new Date(a.tgl);
+    });
+
     saveAndRender();
     toggleModal('modal-bayar');
 };
 
 window.hapusPinjaman = (idx) => { if(confirm("Hapus pinjaman?")) { loans.splice(idx,1); saveAndRender(); } };
-window.hapusRiwayat = (lIdx, rIdx) => { if(confirm("Hapus riwayat?")) { loans[lIdx].riwayat.splice(rIdx,1); saveAndRender(); } };
+window.hapusRiwayat = (lIdx, rIdx) => { if(confirm("Hapus riwayat pembayaran ini?")) { loans[lIdx].riwayat.splice(rIdx,1); saveAndRender(); } };
 
 window.manualUpload = () => autoBackupKeSupabase().then(() => alert("Terunggah!"));
 window.manualDownload = () => autoRestoreDariCloud().then(() => alert("Selesai!"));
@@ -233,7 +263,6 @@ window.restoreData = (e) => {
 };
 
 // --- RENDER UI ---
-
 function render() {
     const container = document.getElementById('loan-list');
     container.innerHTML = '';
@@ -262,7 +291,7 @@ function render() {
                 <div class="tg-content">
                     <div style="display:flex; justify-content:space-between">
                         <span class="tg-title">${loan.nama}</span>
-                        <span style="font-size:0.7rem; color:#94a3b8">Jatuh Tempo: Tgl ${loan.tglJatuhTempo}</span>
+                        <span style="font-size:0.7rem; color:#94a3b8">Tempo: Tgl ${loan.tglJatuhTempo}</span>
                     </div>
                     <div style="display:flex; justify-content:space-between; margin-top:4px">
                         <span class="tg-subtitle">Sisa: Rp ${Math.max(0, sisa).toLocaleString()}</span>
@@ -270,6 +299,7 @@ function render() {
                     </div>
                 </div>
             </div>
+            
             <div id="det-${lIdx}" class="tg-details">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
                     <small>Pokok: Rp ${loan.total.toLocaleString()} (+${loan.bunga}%)</small>
@@ -278,16 +308,48 @@ function render() {
                         <button class="btn-danger-sm" onclick="event.stopPropagation(); hapusPinjaman(${lIdx})">✕</button>
                     </div>
                 </div>
+                
                 <div class="progress-container"><div class="progress-fill" style="width:${persen}%; background:${sisa<=0?'#10b981':'#3b82f6'}"></div></div>
                 <button class="btn btn-success w-100" onclick="event.stopPropagation(); bukaModalBayar(${lIdx})">+ Catat Pembayaran</button>
+                
                 <div style="margin-top:15px">
                     <label>RIWAYAT PEMBAYARAN:</label>
-                    ${loan.riwayat.length === 0 ? '<p style="font-size:0.7rem; color:grey">Belum ada riwayat</p>' : loan.riwayat.map((h, rIdx) => `
-                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; padding:8px 0; border-bottom:1px dashed #e2e8f0">
-                            <span>${h.tgl} - <b>Rp ${h.nominal.toLocaleString()}</b></span>
-                            <span style="color:red; cursor:pointer" onclick="event.stopPropagation(); hapusRiwayat(${lIdx}, ${rIdx})">✕</span>
-                        </div>
-                    `).join('')}
+                    ${(() => {
+                        if (loan.riwayat.length === 0) return '<p style="font-size:0.7rem; color:grey">Belum ada riwayat</p>';
+                        
+                        const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+                        const grouped = {};
+                        
+                        // Grouping data berdasarkan tahun, simpan originalIndex untuk fungsi hapus
+                        loan.riwayat.forEach((h, rIdx) => {
+                            const year = h.tahun || new Date(h.tgl).getFullYear();
+                            if (!grouped[year]) grouped[year] = [];
+                            grouped[year].push({ ...h, originalIndex: rIdx });
+                        });
+
+                        let riwayatHTML = '';
+                        // Render per tahun (descending / tahun terbaru di atas)
+                        Object.keys(grouped).sort((a, b) => b - a).forEach(year => {
+                            riwayatHTML += `<div style="background: #e2e8f0; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; margin: 12px 0 6px 0; color: #475569;">Tahun ${year}</div>`;
+                            
+                            grouped[year].forEach(h => {
+                                const blnStr = h.bulan ? namaBulan[h.bulan - 1] : namaBulan[new Date(h.tgl).getMonth()];
+                                riwayatHTML += `
+                                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:8px 0; border-bottom:1px dashed #e2e8f0">
+                                        <div>
+                                            <div style="font-weight:700; color:var(--primary); margin-bottom:2px">${blnStr} ${year}</div>
+                                            <div style="font-size:0.7rem; color:var(--muted)">Tgl Bayar: ${h.tgl}</div>
+                                        </div>
+                                        <div style="text-align:right">
+                                            <div style="font-weight:700; margin-bottom:2px">Rp ${h.nominal.toLocaleString()}</div>
+                                            <div style="color:var(--danger); cursor:pointer; font-size:0.7rem; font-weight:600" onclick="event.stopPropagation(); hapusRiwayat(${lIdx}, ${h.originalIndex})">✕ Hapus</div>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        });
+                        return riwayatHTML;
+                    })()}
                 </div>
             </div>
         `;
@@ -296,7 +358,7 @@ function render() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Render data awal dari LocalStorage agar instan
+    // 1. Render data awal
     render();
     
     // 2. Cek Notifikasi
@@ -305,6 +367,6 @@ document.addEventListener('DOMContentLoaded', () => {
         cekJatuhTempoDanNotif();
     }
 
-    // 3. Auto-Restore dari Cloud secara perlahan
+    // 3. Auto-Restore Cloud
     autoRestoreDariCloud();
 });
