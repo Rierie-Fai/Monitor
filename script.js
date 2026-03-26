@@ -152,6 +152,15 @@ window.toggleModal = (id) => {
 
 window.toggleDetails = (id) => document.getElementById(id).classList.toggle('active');
 
+// Fungsi untuk toggle (buka/tutup) riwayat tahunan
+window.toggleYear = (id, el) => {
+    const content = document.getElementById(id);
+    if (content) {
+        content.classList.toggle('active');
+        el.classList.toggle('active');
+    }
+};
+
 window.bukaModalSetup = (index = null) => {
     activeLoanIndex = index;
     const isEdit = index !== null;
@@ -328,25 +337,38 @@ function render() {
                         });
 
                         let riwayatHTML = '';
-                        // Render per tahun (descending / tahun terbaru di atas)
-                        Object.keys(grouped).sort((a, b) => b - a).forEach(year => {
-                            riwayatHTML += `<div style="background: #e2e8f0; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; margin: 12px 0 6px 0; color: #475569;">Tahun ${year}</div>`;
+                        // Mengurutkan tahun secara descending (terbaru di atas)
+                        const sortedYears = Object.keys(grouped).sort((a, b) => b - a);
+                        
+                        sortedYears.forEach((year, yIdx) => {
+                            const totalPerTahun = grouped[year].reduce((sum, h) => sum + h.nominal, 0);
+                            const collapseId = `year-${lIdx}-${year}`;
                             
-                            grouped[year].forEach(h => {
-                                const blnStr = h.bulan ? namaBulan[h.bulan - 1] : namaBulan[new Date(h.tgl).getMonth()];
-                                riwayatHTML += `
-                                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:8px 0; border-bottom:1px dashed #e2e8f0">
-                                        <div>
-                                            <div style="font-weight:700; color:var(--primary); margin-bottom:2px">${blnStr} ${year}</div>
-                                            <div style="font-size:0.7rem; color:var(--muted)">Tgl Bayar: ${h.tgl}</div>
-                                        </div>
-                                        <div style="text-align:right">
-                                            <div style="font-weight:700; margin-bottom:2px">Rp ${h.nominal.toLocaleString()}</div>
-                                            <div style="color:var(--danger); cursor:pointer; font-size:0.7rem; font-weight:600" onclick="event.stopPropagation(); hapusRiwayat(${lIdx}, ${h.originalIndex})">✕ Hapus</div>
-                                        </div>
-                                    </div>
-                                `;
-                            });
+                            // Jika index 0 (tahun terbaru), set active agar langsung terbuka
+                            const isActiveClass = yIdx === 0 ? 'active' : '';
+
+                            riwayatHTML += `
+                                <div class="year-group-header ${isActiveClass}" onclick="event.stopPropagation(); toggleYear('${collapseId}', this)">
+                                    <span>Tahun ${year} <span class="year-summary">(Total: Rp ${totalPerTahun.toLocaleString()})</span></span>
+                                </div>
+                                <div id="${collapseId}" class="year-content ${isActiveClass}">
+                                    ${grouped[year].map(h => {
+                                        const blnStr = h.bulan ? namaBulan[h.bulan - 1] : namaBulan[new Date(h.tgl).getMonth()];
+                                        return `
+                                            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; padding:8px 0; border-bottom:1px dashed #e2e8f0">
+                                                <div>
+                                                    <div style="font-weight:700; color:var(--primary); margin-bottom:2px">${blnStr} ${year}</div>
+                                                    <div style="font-size:0.7rem; color:var(--muted)">Tgl Bayar: ${h.tgl}</div>
+                                                </div>
+                                                <div style="text-align:right">
+                                                    <div style="font-weight:700; margin-bottom:2px">Rp ${h.nominal.toLocaleString()}</div>
+                                                    <div style="color:var(--danger); cursor:pointer; font-size:0.7rem; font-weight:600" onclick="event.stopPropagation(); hapusRiwayat(${lIdx}, ${h.originalIndex})">✕ Hapus</div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            `;
                         });
                         return riwayatHTML;
                     })()}
