@@ -1,4 +1,4 @@
-const CACHE_NAME = 'setoran-app-v1.3.1';
+const CACHE_NAME = 'setoran-app-v1.3.2';
 const urlsToCache = [
   '/Monitor/',
   '/Monitor/index.html',
