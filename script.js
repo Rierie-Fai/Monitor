@@ -9,7 +9,7 @@ const supabaseClient = (typeof supabase !== 'undefined') ? supabase.createClient
 const MASTER_KEY = 'pantau_setoran_master_data';
 let loans = JSON.parse(localStorage.getItem(MASTER_KEY) || '[]').map(l => standarisasiData(l));
 let activeLoanIndex = null;
-let bulkQueue = []; // Antrean untuk preview bulk input
+let bulkQueue = [];
 
 function standarisasiData(l) {
     return {
@@ -29,7 +29,6 @@ function cekSudahBayarBulanIni(loan) {
     const sekarang = new Date();
     const blnSekarang = sekarang.getMonth() + 1;
     const thnSekarang = sekarang.getFullYear();
-    
     return loan.riwayat.some(h => {
         const b = h.bulan || (new Date(h.tgl).getMonth() + 1);
         const t = h.tahun || new Date(h.tgl).getFullYear();
@@ -50,15 +49,15 @@ function dapatkanTanggalTempoLengkap(tglInput) {
 function hitungSelisihHari(tglTarget) {
     const sekarang = new Date();
     sekarang.setHours(0, 0, 0, 0);
-    const diff = tglTarget - sekarang;
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return Math.ceil((tglTarget - sekarang) / (1000 * 60 * 60 * 24));
 }
 
 async function mintaIzinNotifikasi() {
     if (!("Notification" in window)) return;
     const perm = await Notification.requestPermission();
     if (perm === "granted") {
-        document.getElementById('btn-notif').classList.add('active');
+        const btn = document.getElementById('btn-notif-drawer');
+        if(btn) { btn.innerText = "✅ NOTIFIKASI AKTIF"; btn.style.borderColor = "var(--success)"; btn.style.color = "var(--success)"; }
         new Notification("Pantau Pro", { body: "Notifikasi Berhasil Diaktifkan!" });
         cekJatuhTempoDanNotif();
     }
@@ -66,8 +65,7 @@ async function mintaIzinNotifikasi() {
 
 function cekJatuhTempoDanNotif() {
     if (Notification.permission !== "granted") return;
-    let pesan = "";
-    let ada = false;
+    let pesan = ""; let ada = false;
 
     loans.forEach(loan => {
         const totalWajib = loan.total + (loan.total * (loan.bunga/100));
@@ -85,7 +83,7 @@ function cekJatuhTempoDanNotif() {
     if (ada) new Notification("Pengingat Setoran", { body: pesan });
 }
 
-// --- SINKRONISASI OTOMATIS (CLOUD) ---
+// --- SINKRONISASI CLOUD ---
 async function saveAndRender() {
     localStorage.setItem(MASTER_KEY, JSON.stringify(loans));
     render();
@@ -95,32 +93,18 @@ async function saveAndRender() {
 async function autoBackupKeSupabase() {
     const indicator = document.getElementById('sync-indicator');
     if (indicator) indicator.style.display = 'block';
-
     try {
         if (!supabaseClient) throw new Error("Supabase Belum Config");
-        await supabaseClient.from('pantau_setoran_sync').upsert({ 
-            id: SYNC_ID, 
-            data: loans, 
-            updated_at: new Date() 
-        });
-        console.log("☁️ Auto-Backup Sukses");
-    } catch (e) {
-        console.error("☁️ Auto-Backup Gagal:", e);
-    } finally {
-        if (indicator) setTimeout(() => indicator.style.display = 'none', 1500);
-    }
+        await supabaseClient.from('pantau_setoran_sync').upsert({ id: SYNC_ID, data: loans, updated_at: new Date() });
+    } catch (e) { console.error("☁️ Auto-Backup Gagal:", e); } 
+    finally { if (indicator) setTimeout(() => indicator.style.display = 'none', 1500); }
 }
 
 async function autoRestoreDariCloud() {
     try {
         const { data } = await supabaseClient.from('pantau_setoran_sync').select('data').eq('id', SYNC_ID).single();
-        if (data && data.data) {
-            mergeData(data.data);
-            console.log("✅ Auto-Restore Sukses");
-        }
-    } catch (e) {
-        console.log("ℹ️ Cloud Kosong atau Offline");
-    }
+        if (data && data.data) mergeData(data.data);
+    } catch (e) { console.log("ℹ️ Cloud Kosong atau Offline"); }
 }
 
 function mergeData(newData) {
@@ -133,26 +117,33 @@ function mergeData(newData) {
     render();
 }
 
-// --- GLOBAL ACTIONS ---
+// --- LOGIKA DRAWER & UI GLOBAL ---
+window.openDrawer = (side) => {
+    document.getElementById('drawer-overlay').classList.add('active');
+    document.getElementById(`drawer-${side}`).classList.add('active');
+};
+
+window.closeDrawers = () => {
+    document.getElementById('drawer-overlay').classList.remove('active');
+    document.querySelectorAll('.drawer').forEach(d => d.classList.remove('active'));
+};
+
 window.toggleModal = (id) => {
     const el = document.getElementById(id);
     if(el) el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
 };
-
 window.toggleDetails = (id) => document.getElementById(id).classList.toggle('active');
-
 window.toggleYear = (id, el) => {
     const content = document.getElementById(id);
-    if (content) {
-        content.classList.toggle('active');
-        el.classList.toggle('active');
-    }
+    if (content) { content.classList.toggle('active'); el.classList.toggle('active'); }
 };
 
-window.bukaModalSetup = (index = null) => {
+// --- LOGIKA PINJAMAN (DARI DRAWER KANAN) ---
+window.bukaDrawerSetup = (index = null) => {
     activeLoanIndex = index;
     const isEdit = index !== null;
-    document.getElementById('setup-title').innerText = isEdit ? "EDIT_PINJAMAN" : "PINJAMAN_BARU";
+    document.getElementById('setup-title').innerText = isEdit ? "[ EDIT_ENTRY ]" : "[ NEW_ENTRY ]";
+    
     if (isEdit) {
         const l = loans[index];
         document.getElementById('input-nama').value = l.nama;
@@ -162,9 +153,9 @@ window.bukaModalSetup = (index = null) => {
         document.getElementById('input-durasi').value = l.durasi;
         document.getElementById('input-tgl').value = l.tglJatuhTempo;
     } else {
-        document.querySelectorAll('#modal-setup input').forEach(i => i.value = '');
+        document.querySelectorAll('#drawer-right input').forEach(i => i.value = '');
     }
-    toggleModal('modal-setup');
+    openDrawer('right');
 };
 
 window.simpanPinjaman = () => {
@@ -178,8 +169,9 @@ window.simpanPinjaman = () => {
     };
     if (activeLoanIndex !== null) loans[activeLoanIndex] = { ...loans[activeLoanIndex], ...d };
     else { d.id = Date.now(); d.riwayat = []; loans.push(d); }
+    
     saveAndRender();
-    toggleModal('modal-setup');
+    closeDrawers();
 };
 
 // --- LOGIKA PEMBAYARAN MANUAL ---
@@ -234,7 +226,7 @@ function sortRiwayat(loanTarget) {
     });
 }
 
-// --- LOGIKA BULK INPUT V2 (PREVIEW & EXECUTE) ---
+// --- LOGIKA BULK INPUT ---
 window.bukaModalBulk = (lIdx) => {
     activeLoanIndex = lIdx;
     const now = new Date();
@@ -314,48 +306,40 @@ window.generatePreview = () => {
 
 window.prosesBulkInput = () => {
     if (bulkQueue.length === 0) return alert("Tidak ada data baru untuk ditambahkan.");
-    
     loans[activeLoanIndex].riwayat.push(...bulkQueue);
     sortRiwayat(loans[activeLoanIndex]);
-
     saveAndRender();
     toggleModal('modal-bulk');
     alert(`Sukses menginput ${bulkQueue.length} riwayat pembayaran.`);
     bulkQueue = []; 
 };
 
-// --- DELETE ACTIONS ---
-window.hapusPinjaman = (idx) => { if(confirm("Hapus pinjaman ini dari sistem?")) { loans.splice(idx,1); saveAndRender(); } };
-window.hapusRiwayat = (lIdx, rIdx) => { if(confirm("Hapus riwayat pembayaran ini?")) { loans[lIdx].riwayat.splice(rIdx,1); saveAndRender(); } };
-window.hapusSemuaRiwayat = (lIdx) => { 
-    if(confirm("⚠️ PERINGATAN: Hapus SELURUH riwayat untuk pinjaman ini? Data di cloud juga akan ikut terhapus.")) { 
-        loans[lIdx].riwayat = []; 
-        saveAndRender(); 
-    } 
-};
+// --- BACKUP & DELETE ACTIONS ---
+window.hapusPinjaman = (idx) => { if(confirm("Hapus entri pinjaman ini?")) { loans.splice(idx,1); saveAndRender(); } };
+window.hapusRiwayat = (lIdx, rIdx) => { if(confirm("Hapus riwayat ini?")) { loans[lIdx].riwayat.splice(rIdx,1); saveAndRender(); } };
+window.hapusSemuaRiwayat = (lIdx) => { if(confirm("⚠️ Hapus SELURUH riwayat untuk pinjaman ini?")) { loans[lIdx].riwayat = []; saveAndRender(); } };
 
-window.manualUpload = () => autoBackupKeSupabase().then(() => alert("Berhasil diunggah ke cloud."));
-window.manualDownload = () => autoRestoreDariCloud().then(() => alert("Data lokal berhasil disinkronkan."));
+window.manualUpload = () => autoBackupKeSupabase().then(() => { alert("Cloud Sync Berhasil."); closeDrawers(); });
+window.manualDownload = () => autoRestoreDariCloud().then(() => { alert("Local Sync Berhasil."); closeDrawers(); });
 
 window.backupData = () => {
     const blob = new Blob([JSON.stringify(loans, null, 2)], { type: "application/json" });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     a.download = `Backup_PantauPro_${new Date().toISOString().slice(0,10)}.json`; a.click();
+    closeDrawers();
 };
 
 window.restoreData = (e) => {
     const reader = new FileReader();
-    reader.onload = (ev) => { mergeData(JSON.parse(ev.target.result)); alert("Sistem berhasil di-restore."); };
+    reader.onload = (ev) => { mergeData(JSON.parse(ev.target.result)); alert("System Restored."); closeDrawers(); };
     reader.readAsText(e.target.files[0]);
 };
 
 // --- RENDER UI ---
-function render() {
+window.render = () => {
     const container = document.getElementById('loan-list');
     container.innerHTML = '';
     const query = document.getElementById('search-input').value.toLowerCase();
-    
-    // Warna Avatar Dinamis
     const colors = ['#00d2ff', '#00ff9d', '#f59e0b', '#a855f7', '#ec4899'];
 
     loans.filter(l => l.nama.toLowerCase().includes(query)).forEach((loan, idx) => {
@@ -393,7 +377,7 @@ function render() {
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
                     <small style="font-family:monospace;">POKOK: Rp ${loan.total.toLocaleString()} (+${loan.bunga}%)</small>
                     <div>
-                        <button class="btn-edit-sm" onclick="event.stopPropagation(); bukaModalSetup(${lIdx})">⚙️ EDIT</button>
+                        <button class="btn-edit-sm" onclick="event.stopPropagation(); bukaDrawerSetup(${lIdx})">⚙️ EDIT</button>
                         <button class="btn-danger-sm" onclick="event.stopPropagation(); hapusPinjaman(${lIdx})">✕</button>
                     </div>
                 </div>
@@ -450,7 +434,6 @@ function render() {
                             `;
                         });
                         
-                        // Tombol Hapus Semua Riwayat
                         riwayatHTML += `
                             <div style="margin-top: 20px; border-top: 2px dashed #e2e8f0; padding-top: 15px;">
                                 <button class="btn-edit-sm" style="color: var(--danger); width: 100%; border: 1px solid #fee2e2; background: white;" 
@@ -467,12 +450,13 @@ function render() {
         `;
         container.appendChild(item);
     });
-}
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     render();
     if (Notification.permission === "granted") {
-        document.getElementById('btn-notif').classList.add('active');
+        const btn = document.getElementById('btn-notif-drawer');
+        if(btn) { btn.innerText = "✅ NOTIFIKASI AKTIF"; btn.style.borderColor = "var(--success)"; btn.style.color = "var(--success)"; }
         cekJatuhTempoDanNotif();
     }
     autoRestoreDariCloud();
