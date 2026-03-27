@@ -12,42 +12,38 @@
 
 <div class="sync-banner" id="sync-indicator">☁️ Menyinkronkan...</div>
 
-<div class="container">
-    <header>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
-            <div>
-                <h2 style="margin:0; font-size:1.4rem; color: var(--text);">Pantau <span style="color:var(--primary)">Pro</span></h2>
-                <span style="font-size:0.75rem; color:var(--muted); font-weight:600; letter-spacing: 1px;">SYSTEM_ONLINE</span>
-            </div>
-            <button id="btn-notif" class="btn-notif-circle" onclick="mintaIzinNotifikasi()">🔔</button>
-        </div>
+<div id="drawer-overlay" class="drawer-overlay" onclick="closeDrawers()"></div>
 
-        <div class="action-bar">
-            <button class="btn btn-primary flex-btn" onclick="bukaModalSetup()">+ PINJAMAN BARU</button>
-            <button class="btn btn-outline flex-btn" onclick="manualUpload()">☁️ UPLOAD</button>
-            <button class="btn btn-outline flex-btn" onclick="manualDownload()">☁️ SYNC</button>
-        </div>
+<div id="drawer-left" class="drawer drawer-left">
+    <div class="drawer-header">
+        <h3 style="margin:0; font-family:monospace; color:var(--primary);">[ SYSTEM_CORE ]</h3>
+        <button class="btn-danger-sm" style="font-size:1.5rem;" onclick="closeDrawers()">✕</button>
+    </div>
+    <div class="drawer-content">
+        <label>CLOUD SYNC (SUPABASE)</label>
+        <button class="btn btn-primary w-100" style="margin-bottom:8px" onclick="manualUpload()">☁️ PUSH TO CLOUD</button>
+        <button class="btn btn-outline w-100" style="margin-bottom:20px" onclick="manualDownload()">☁️ PULL FROM CLOUD</button>
         
-        <div class="action-bar">
-            <button class="btn btn-outline flex-btn" style="font-size: 0.7rem !important;" onclick="backupData()">💾 BACKUP LOKAL</button>
-            <label class="btn btn-outline flex-btn" style="font-size: 0.7rem !important; text-align:center; cursor:pointer; margin:0">
-                📂 RESTORE LOKAL
-                <input type="file" style="display:none" onchange="restoreData(event)" accept=".json">
-            </label>
-        </div>
+        <label>LOCAL STORAGE</label>
+        <button class="btn btn-success w-100" style="margin-bottom:8px" onclick="backupData()">💾 EXPORT JSON</button>
+        <label class="btn btn-outline w-100" style="text-align:center; cursor:pointer; display:block; margin:0;">
+            📂 IMPORT JSON
+            <input type="file" style="display:none" onchange="restoreData(event)" accept=".json">
+        </label>
 
-        <div class="search-container">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="search-input" class="search-input" placeholder="Cari nama pinjaman..." onkeyup="render()">
+        <div style="margin-top:30px; border-top: 1px dashed var(--border-mecha); padding-top:15px;">
+            <label>NOTIFICATIONS</label>
+            <button id="btn-notif-drawer" class="btn btn-outline w-100" onclick="mintaIzinNotifikasi()">🔔 AKTIFKAN PENGINGAT</button>
         </div>
-    </header>
-
-    <div id="loan-list"></div>
+    </div>
 </div>
 
-<div id="modal-setup" class="overlay">
-    <div class="card modal">
-        <h2 id="setup-title" style="margin-top:0">Pinjaman Baru</h2>
+<div id="drawer-right" class="drawer drawer-right">
+    <div class="drawer-header">
+        <h3 id="setup-title" style="margin:0; font-family:monospace; color:var(--primary);">[ NEW_ENTRY ]</h3>
+        <button class="btn-danger-sm" style="font-size:1.5rem;" onclick="closeDrawers()">✕</button>
+    </div>
+    <div class="drawer-content">
         <label>Nama Pinjaman / Debitur</label>
         <input type="text" id="input-nama" placeholder="Contoh: KUR BRI">
         
@@ -64,17 +60,38 @@
         <label>Tanggal Jatuh Tempo Tiap Bulan (1-31)</label>
         <input type="number" id="input-tgl" min="1" max="31">
         
-        <div class="grid-2 mt-20">
-            <button class="btn btn-outline" onclick="toggleModal('modal-setup')">BATAL</button>
-            <button class="btn btn-primary" onclick="simpanPinjaman()">SIMPAN DATA</button>
+        <div class="mt-20">
+            <button class="btn btn-primary w-100" onclick="simpanPinjaman()">SIMPAN DATA ENTRY</button>
         </div>
     </div>
 </div>
 
+<div class="container">
+    <header>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
+            <button class="btn-icon" onclick="openDrawer('left')">⚙️ SYS</button>
+            
+            <div style="text-align:center">
+                <h2 style="margin:0; font-size:1.4rem; color: var(--text);">Pantau <span style="color:var(--primary)">Pro</span></h2>
+                <span style="font-size:0.65rem; color:var(--muted); font-weight:800; letter-spacing: 2px;">ONLINE</span>
+            </div>
+            
+            <button class="btn-icon add-btn" onclick="bukaDrawerSetup()">+ ADD</button>
+        </div>
+
+        <div class="search-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-input" class="search-input" placeholder="Cari nama pinjaman..." onkeyup="render()">
+        </div>
+    </header>
+
+    <div id="loan-list"></div>
+</div>
+
 <div id="modal-bayar" class="overlay">
     <div class="card modal">
-        <h2 style="margin-top:0">Catat Pembayaran</h2>
-        <p style="font-size:0.8rem; color:var(--muted); margin-bottom:15px">Untuk: <strong id="bayar-untuk-nama"></strong></p>
+        <h2 style="margin-top:0; font-family:monospace; color:var(--success)">[ CATAT_BAYAR ]</h2>
+        <p style="font-size:0.8rem; color:var(--muted); margin-bottom:15px">Target: <strong id="bayar-untuk-nama"></strong></p>
         
         <input type="hidden" id="edit-history-index">
         
@@ -97,7 +114,7 @@
         
         <div class="grid-2 mt-20">
             <button class="btn btn-outline" onclick="toggleModal('modal-bayar')">BATAL</button>
-            <button class="btn btn-success" onclick="prosesSimpanBayar()">SIMPAN SETORAN</button>
+            <button class="btn btn-success" onclick="prosesSimpanBayar()">EKSEKUSI</button>
         </div>
     </div>
 </div>
