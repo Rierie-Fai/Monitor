@@ -2,125 +2,154 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pantau Setoran Pro</title>
-    
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#3b82f6">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pantau Pro - Setoran</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-<div id="sync-indicator" class="sync-banner">☁️ Sinkronisasi Awan...</div>
+<div class="sync-banner" id="sync-indicator">☁️ Menyinkronkan...</div>
 
 <div class="container">
     <header>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h1 style="margin: 0; font-size: 1.4rem; color: #1e293b;">☰ Pantau Pro</h1>
-            <button id="btn-notif" class="btn-notif-circle" onclick="mintaIzinNotifikasi()" title="Aktifkan Notifikasi">🔔</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
+            <div>
+                <h2 style="margin:0; font-size:1.4rem; color: var(--text);">Pantau <span style="color:var(--primary)">Pro</span></h2>
+                <span style="font-size:0.75rem; color:var(--muted); font-weight:600; letter-spacing: 1px;">SYSTEM_ONLINE</span>
+            </div>
+            <button id="btn-notif" class="btn-notif-circle" onclick="mintaIzinNotifikasi()">🔔</button>
+        </div>
+
+        <div class="action-bar">
+            <button class="btn btn-primary flex-btn" onclick="bukaModalSetup()">+ PINJAMAN BARU</button>
+            <button class="btn btn-outline flex-btn" onclick="manualUpload()">☁️ UPLOAD</button>
+            <button class="btn btn-outline flex-btn" onclick="manualDownload()">☁️ SYNC</button>
         </div>
         
         <div class="action-bar">
-            <button class="btn btn-primary flex-btn" onclick="bukaModalSetup()">+ Pinjaman</button>
-            <button class="btn btn-cloud flex-btn" onclick="toggleModal('modal-cloud')">☁️ Cloud Sync</button>
+            <button class="btn btn-outline flex-btn" style="font-size: 0.7rem !important;" onclick="backupData()">💾 BACKUP LOKAL</button>
+            <label class="btn btn-outline flex-btn" style="font-size: 0.7rem !important; text-align:center; cursor:pointer; margin:0">
+                📂 RESTORE LOKAL
+                <input type="file" style="display:none" onchange="restoreData(event)" accept=".json">
+            </label>
         </div>
 
         <div class="search-container">
             <span class="search-icon">🔍</span>
-            <input type="text" id="search-input" class="search-input" placeholder="Cari Pinjaman..." onkeyup="render()">
+            <input type="text" id="search-input" class="search-input" placeholder="Cari nama pinjaman..." onkeyup="render()">
         </div>
     </header>
 
-    <div id="modal-setup" class="overlay">
-        <div class="card modal">
-            <h2 id="setup-title" style="margin-top:0">Pinjaman Baru</h2>
-            <input type="hidden" id="edit-loan-index">
-            <label>Nama Pinjaman</label>
-            <input type="text" id="input-nama" placeholder="Contoh: Cicilan Motor">
-            <div class="grid-2">
-                <div><label>Pokok (Rp)</label><input type="number" id="input-total"></div>
-                <div><label>Bunga (%)</label><input type="number" id="input-bunga" step="0.1"></div>
-            </div>
-            <label>Setoran Berkala (Rp)</label>
-            <input type="number" id="input-setoran">
-            <div class="grid-2">
-                <div><label>Tenor (Kali)</label><input type="number" id="input-durasi"></div>
-                <div><label>Tgl Tempo (1-31)</label><input type="number" id="input-tgl" min="1" max="31"></div>
-            </div>
-            <div class="grid-2 mt-20">
-                <button class="btn btn-outline" onclick="toggleModal('modal-setup')">Batal</button>
-                <button class="btn btn-primary" onclick="simpanPinjaman()">Simpan</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-bayar" class="overlay">
-        <div class="card modal">
-            <h2 style="margin-top:0">Catat Pembayaran</h2>
-            <p id="bayar-untuk-nama" class="badge-info"></p>
-            <input type="hidden" id="edit-history-index">
-            
-            <label>Tanggal Bayar</label>
-            <input type="date" id="bayar-tgl">
-            
-            <label>Nominal (Rp)</label>
-            <input type="number" id="bayar-nominal">
-            
-            <div class="grid-2">
-                <div>
-                    <label>Untuk Bulan</label>
-                    <select id="bayar-bulan" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 10px; background: white;">
-                        <option value="1">Januari</option>
-                        <option value="2">Februari</option>
-                        <option value="3">Maret</option>
-                        <option value="4">April</option>
-                        <option value="5">Mei</option>
-                        <option value="6">Juni</option>
-                        <option value="7">Juli</option>
-                        <option value="8">Agustus</option>
-                        <option value="9">September</option>
-                        <option value="10">Oktober</option>
-                        <option value="11">November</option>
-                        <option value="12">Desember</option>
-                    </select>
-                </div>
-                <div>
-                    <label>Untuk Tahun</label>
-                    <input type="number" id="bayar-tahun" min="2000" max="2100">
-                </div>
-            </div>
-
-            <div class="grid-2 mt-20">
-                <button class="btn btn-outline" onclick="toggleModal('modal-bayar')">Batal</button>
-                <button class="btn btn-success" onclick="prosesSimpanBayar()">Simpan</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-cloud" class="overlay">
-        <div class="card modal">
-            <h2 style="margin-top:0">Cloud & Backup</h2>
-            <p style="font-size:0.8rem; color:var(--muted); margin-bottom:15px">Sistem melakukan Auto-Sync setiap ada perubahan.</p>
-            
-            <button class="btn btn-primary w-100 mb-10" onclick="manualUpload()" id="btn-upload">⬆️ Paksa Upload ke Awan</button>
-            <button class="btn btn-outline w-100 mb-20" onclick="manualDownload()" id="btn-download">⬇️ Paksa Ambil dari Awan</button>
-            
-            <div style="border-top: 1px solid #e2e8f0; padding-top: 15px;">
-                <button class="btn-edit-sm w-100 mb-10" onclick="backupData()">📥 Backup ke File JSON</button>
-                <label class="btn-edit-sm w-100" style="display:block; text-align:center; cursor:pointer">
-                    📤 Restore dari File
-                    <input type="file" accept=".json" style="display:none" onchange="restoreData(event)">
-                </label>
-            </div>
-            <button class="btn btn-danger-sm w-100 mt-20" onclick="toggleModal('modal-cloud')">Tutup</button>
-        </div>
-    </div>
-
     <div id="loan-list"></div>
+</div>
+
+<div id="modal-setup" class="overlay">
+    <div class="card modal">
+        <h2 id="setup-title" style="margin-top:0">Pinjaman Baru</h2>
+        <label>Nama Pinjaman / Debitur</label>
+        <input type="text" id="input-nama" placeholder="Contoh: KUR BRI">
+        
+        <div class="grid-2">
+            <div><label>Total Pokok (Rp)</label><input type="number" id="input-total"></div>
+            <div><label>Bunga Total (%)</label><input type="number" id="input-bunga" value="0"></div>
+        </div>
+        
+        <div class="grid-2">
+            <div><label>Setoran Per Bulan (Rp)</label><input type="number" id="input-setoran"></div>
+            <div><label>Durasi (Bulan)</label><input type="number" id="input-durasi"></div>
+        </div>
+        
+        <label>Tanggal Jatuh Tempo Tiap Bulan (1-31)</label>
+        <input type="number" id="input-tgl" min="1" max="31">
+        
+        <div class="grid-2 mt-20">
+            <button class="btn btn-outline" onclick="toggleModal('modal-setup')">BATAL</button>
+            <button class="btn btn-primary" onclick="simpanPinjaman()">SIMPAN DATA</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-bayar" class="overlay">
+    <div class="card modal">
+        <h2 style="margin-top:0">Catat Pembayaran</h2>
+        <p style="font-size:0.8rem; color:var(--muted); margin-bottom:15px">Untuk: <strong id="bayar-untuk-nama"></strong></p>
+        
+        <input type="hidden" id="edit-history-index">
+        
+        <label>Tanggal Aktual Pembayaran</label>
+        <input type="date" id="bayar-tgl">
+        
+        <label>Nominal Pembayaran (Rp)</label>
+        <input type="number" id="bayar-nominal">
+
+        <label>Alokasi Pembayaran Untuk:</label>
+        <div class="grid-2">
+            <select id="bayar-bulan">
+                <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+                <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+                <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+                <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+            </select>
+            <input type="number" id="bayar-tahun" placeholder="Tahun">
+        </div>
+        
+        <div class="grid-2 mt-20">
+            <button class="btn btn-outline" onclick="toggleModal('modal-bayar')">BATAL</button>
+            <button class="btn btn-success" onclick="prosesSimpanBayar()">SIMPAN SETORAN</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-bulk" class="overlay">
+    <div class="card modal" style="border-color: #a855f7; box-shadow: 0 0 30px rgba(168, 85, 247, 0.3);">
+        <h2 style="margin-top:0; color: #a855f7; font-family: monospace;">[ BULK_GENERATOR ]</h2>
+        
+        <label>Mulai Dari</label>
+        <div class="grid-2" style="margin-bottom: 10px;">
+            <select id="bulk-bln-mulai">
+                <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+                <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+                <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+                <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+            </select>
+            <input type="number" id="bulk-thn-mulai" placeholder="Tahun">
+        </div>
+
+        <label>Sampai Dengan</label>
+        <div class="grid-2" style="margin-bottom: 10px;">
+            <select id="bulk-bln-selesai">
+                <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+                <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+                <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+                <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+            </select>
+            <input type="number" id="bulk-thn-selesai" placeholder="Tahun">
+        </div>
+        
+        <label>Nominal & Tanggal Aktual Bayar</label>
+        <div class="grid-2">
+            <input type="number" id="bulk-nominal" placeholder="Nominal">
+            <input type="number" id="bulk-tgl" min="1" max="31" value="25" placeholder="Tgl">
+        </div>
+
+        <label>Timing Pembayaran</label>
+        <select id="bulk-timing" style="margin-bottom: 15px;">
+            <option value="sama">Dibayar pada bulan yang sama</option>
+            <option value="sebelum">Dibayar pada bulan sebelumnya (H-1 Bulan)</option>
+        </select>
+
+        <div id="bulk-preview-area" style="display:none; margin-top: 15px;">
+            <label style="color: var(--primary);">PREVIEW_DATA:</label>
+            <div id="bulk-preview-list" class="preview-scroll"></div>
+        </div>
+
+        <div class="grid-2 mt-20">
+            <button class="btn btn-outline" onclick="toggleModal('modal-bulk')">BATAL</button>
+            <button id="btn-bulk-action" class="btn btn-primary" style="background:#a855f7; border:none;" onclick="generatePreview()">LIHAT PREVIEW</button>
+        </div>
+    </div>
 </div>
 
 <script src="script.js"></script>
